@@ -67,6 +67,7 @@ webpack.config.js
 scripts/
 src/
 pnpm-lock.yaml
+bun.lock
 output/
 .eslintignore
 .eslintrc
