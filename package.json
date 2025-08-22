@@ -3,12 +3,13 @@
   "description": "vite-plugin for safex engine",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json"
   },
   "devDependencies": {
+    "@types/estraverse": "^5.1.7",
     "typescript": "~5.8.3",
     "vite": "^7.1.3"
   },

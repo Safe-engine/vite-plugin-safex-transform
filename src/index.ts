@@ -181,7 +181,7 @@ export function safexTransform(): Plugin {
     async transform(code, id) {
       if (!id.endsWith(".tsx")) return;
       console.log('transform', id)
-      const parsed = parse(code);
+      const parsed: any = parse(code);
       let output = '';
       let sourceFramework = '';
       let jsxBlock;
@@ -191,7 +191,7 @@ export function safexTransform(): Plugin {
       let hasLoad;
       let listMethods: any[] = []
       ESTraverse.traverse(parsed, {
-        enter(node, parent) {
+        enter(node: any, parent) {
           if (node.type === 'ImportDeclaration') {
             if (sourceFramework) return
             const { source } = node
@@ -200,17 +200,6 @@ export function safexTransform(): Plugin {
             }
             if (source.value === '@safe-engine/cocos') {
               sourceFramework = 'cocos'
-            }
-          } else if ('ExportDeclaration' === node.type) {
-            if (node.declaration && node.declaration.type === 'ClassDeclaration') {
-              currentClassName = node.declaration.id.name;
-            } else if (node.declaration && node.declaration.type === 'VariableDeclaration') {
-              const { declarations } = node.declaration
-              declarations.forEach((decl) => {
-                if (decl.init && decl.init.type === 'ClassExpression') {
-                  currentClassName = decl.id.name;
-                }
-              });
             }
           } else if ('ClassDeclaration' === node.type) {
             currentClassName = node.id.name
