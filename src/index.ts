@@ -180,7 +180,7 @@ export function safexTransform(): Plugin {
     enforce: "pre",
     async transform(code, id) {
       if (!id.endsWith(".tsx")) return;
-      console.log('transform', id)
+      // console.log('transform', id)
       const parsed: any = parse(code);
       let output = '';
       let sourceFramework = '';
@@ -219,112 +219,117 @@ export function safexTransform(): Plugin {
         },
         fallback: 'iteration'
       });
-      const { openingElement, children } = jsxBlock
-      const { attributes, name: rootTag } = openingElement
-      let ret = ''
-      let begin = ''
-      const classVar = getComponentName(currentClassName)
-      function parseJSX(tagName, children, attributes: any[] = [], parentVar?) {
-        const componentName = tagName.name
-        // console.log('parseJSX', componentName)
-        if (componentName === 'ExtraDataComp') {
-          // console.log(parentVar, attributes[1])
-          const key = attributes.find(({ name }) => name.name === 'key').value.value
-          const value = attributes.find(({ name }) => name.name === 'value')
-          ret += `\n     ${parentVar}.node.setData('${key}', ${parseValue(value.value)})`
-          return
-        }
-        const compVar = getComponentName(componentName)
-        const params = attributesToParams(attributes, listMethods)
-        const createComponentString = `\n    const ${compVar} = instantiate(${componentName}, ${params})`
-        if (!parentVar) {
-          begin += createComponentString
-          begin += `\n   const ${classVar} = ${compVar}.addComponent(this)`
-          if (hasLoad) {
-            ret += `\n${classVar}.onLoad();`
-          }
-        } else {
-          ret += createComponentString
-        }
-        if (parentVar) {
-          ret += `\n     ${parentVar}.node.resolveComponent(${compVar})`
-        }
-        attributes.forEach(({ name, value }) => {
-          const attName = name.name
-          const refString = parseValue(value)
-          const rightValue = `${compVar}`
-          if (attName === '$ref') {
-            ret += `\n${refString} = ${rightValue};`
-          } else if (attName === '$refNode') {
-            ret += `\n${refString} = ${rightValue}.node;`
-          } else if (attName === '$push') {
-            ret += `\n${refString}.push(${rightValue});`
-          } else if (attName === '$pushNode') {
-            ret += `\n${refString}.push(${rightValue}.node);`
-          } else if (attName === 'node') {
-            ret += parseNodeAttribute(value, compVar, attName)
-          }
-        })
-        children.forEach(parseChildren(compVar))
-      }
-      function parseChildren(compVar) {
-        return (element) => {
-          const { openingElement, children, type, expression } = element
-          if (type !== 'JSXElement') {
-            if (type === 'JSXExpressionContainer') {
-              parseJSXExpressionContainer(expression, compVar)
-            } else if (type === 'CallExpression') {
-              parseJSXExpressionContainer(element, compVar)
-            }
+      if (jsxBlock) {
+        const { openingElement, children } = jsxBlock
+        const { attributes, name: rootTag } = openingElement
+        let ret = ''
+        let begin = ''
+        const classVar = getComponentName(currentClassName)
+        function parseJSX(tagName, children, attributes: any[] = [], parentVar?) {
+          const componentName = tagName.name
+          // console.log('parseJSX', componentName)
+          if (componentName === 'ExtraDataComp') {
+            // console.log(parentVar, attributes[1])
+            const key = attributes.find(({ name }) => name.name === 'key').value.value
+            const value = attributes.find(({ name }) => name.name === 'value')
+            ret += `\n     ${parentVar}.node.setData('${key}', ${parseValue(value.value)})`
             return
           }
-          const { attributes, name } = openingElement
-          parseJSX(name, children, attributes, compVar)
-        }
-      }
-      function parseJSXExpressionContainer(expression, compVar) {
-        const { type, callee, arguments: args } = expression
-        if (type === 'CallExpression') {
-          const callback = args[0]
-          // console.log('CallExpression', callee, callback)
-          const { object } = callee
-          if (object.callee && object.callee.name === 'Array') {
-            const { name, left, right } = callback.params[1] || callback.params[0]
-            const indexVar = name || left.name
-            const startIndex = right ? right.value : 0
-            const loopCount = object.arguments[0].value + startIndex
-            ret += `\n for(let ${indexVar} = ${startIndex}; ${indexVar} < ${loopCount}; ${indexVar}++) {`
-            // console.log('callee', loopCount, callback.body)
-            parseChildren(compVar)(callback.body)
-            ret += '\n }'
-          } else {
-            // console.log('loopVar', type, object, callback.params[1])
-            const { name, left, right } = callback.params[1]
-            const indexVar = name || left.name
-            const loopVar = parseValue(object)
-            const itemVar = callback.params[0].name
-            const startIndex = right ? right.value : 0
-            if (startIndex) {
-              ret += `\n for(let ${indexVar} = ${startIndex}; ${indexVar} < ${loopVar}.length + ${startIndex}; ${indexVar}++) {`
-              ret += `\n const ${itemVar} = ${loopVar}[${indexVar} - ${startIndex}]`
-            } else {
-              ret += `\n for(let ${indexVar} = 0; ${indexVar} < ${loopVar}.length; ${indexVar}++) {`
-              ret += `\n const ${itemVar} = ${loopVar}[${indexVar}]`
+          const compVar = getComponentName(componentName)
+          const params = attributesToParams(attributes, listMethods)
+          const createComponentString = `\n    const ${compVar} = instantiate(${componentName}, ${params})`
+          if (!parentVar) {
+            begin += createComponentString
+            begin += `\n   const ${classVar} = ${compVar}.addComponent(this)`
+            if (hasLoad) {
+              ret += `\n${classVar}.onLoad();`
             }
-            parseChildren(compVar)(callback.body)
-            ret += '\n }'
+          } else {
+            ret += createComponentString
+          }
+          if (parentVar) {
+            ret += `\n     ${parentVar}.node.resolveComponent(${compVar})`
+          }
+          attributes.forEach(({ name, value }) => {
+            const attName = name.name
+            const refString = parseValue(value)
+            const rightValue = `${compVar}`
+            if (attName === '$ref') {
+              ret += `\n${refString} = ${rightValue};`
+            } else if (attName === '$refNode') {
+              ret += `\n${refString} = ${rightValue}.node;`
+            } else if (attName === '$push') {
+              ret += `\n${refString}.push(${rightValue});`
+            } else if (attName === '$pushNode') {
+              ret += `\n${refString}.push(${rightValue}.node);`
+            } else if (attName === 'node') {
+              ret += parseNodeAttribute(value, compVar, attName)
+            }
+          })
+          children.forEach(parseChildren(compVar))
+        }
+        function parseChildren(compVar) {
+          return (element) => {
+            const { openingElement, children, type, expression } = element
+            if (type !== 'JSXElement') {
+              if (type === 'JSXExpressionContainer') {
+                parseJSXExpressionContainer(expression, compVar)
+              } else if (type === 'CallExpression') {
+                parseJSXExpressionContainer(element, compVar)
+              }
+              return
+            }
+            const { attributes, name } = openingElement
+            parseJSX(name, children, attributes, compVar)
           }
         }
+        function parseJSXExpressionContainer(expression, compVar) {
+          const { type, callee, arguments: args } = expression
+          if (type === 'CallExpression') {
+            const callback = args[0]
+            // console.log('CallExpression', callee, callback)
+            const { object } = callee
+            if (object.callee && object.callee.name === 'Array') {
+              const { name, left, right } = callback.params[1] || callback.params[0]
+              const indexVar = name || left.name
+              const startIndex = right ? right.value : 0
+              const loopCount = object.arguments[0].value + startIndex
+              ret += `\n for(let ${indexVar} = ${startIndex}; ${indexVar} < ${loopCount}; ${indexVar}++) {`
+              // console.log('callee', loopCount, callback.body)
+              parseChildren(compVar)(callback.body)
+              ret += '\n }'
+            } else {
+              // console.log('loopVar', type, object, callback.params[1])
+              const { name, left, right } = callback.params[1]
+              const indexVar = name || left.name
+              const loopVar = parseValue(object)
+              const itemVar = callback.params[0].name
+              const startIndex = right ? right.value : 0
+              if (startIndex) {
+                ret += `\n for(let ${indexVar} = ${startIndex}; ${indexVar} < ${loopVar}.length + ${startIndex}; ${indexVar}++) {`
+                ret += `\n const ${itemVar} = ${loopVar}[${indexVar} - ${startIndex}]`
+              } else {
+                ret += `\n for(let ${indexVar} = 0; ${indexVar} < ${loopVar}.length; ${indexVar}++) {`
+                ret += `\n const ${itemVar} = ${loopVar}[${indexVar}]`
+              }
+              parseChildren(compVar)(callback.body)
+              ret += '\n }'
+            }
+          }
+        }
+        parseJSX(rootTag, children, attributes)
+        if (hasStart) {
+          ret += `\n${classVar}.start();`
+        }
+        output += `${begin}${ret}\n    return ${classVar}`
+        const [start, end] = jsxBlockParent.range;
+        const imp = `import { instantiate, registerSystem } from '@safe-engine/${sourceFramework}'\n`
+        output = imp + spliceSlice(code, start, end - start, output) + `\nregisterSystem(${currentClassName})`
+        // console.log('Program', currentClassName, output)
+      } else {
+        const imp = `import { registerSystem } from '@safe-engine/${sourceFramework}'\n`
+        output = imp + code + `\nregisterSystem(${currentClassName})`
       }
-      parseJSX(rootTag, children, attributes)
-      if (hasStart) {
-        ret += `\n${classVar}.start();`
-      }
-      output += `${begin}${ret}\n    return ${classVar}`
-      const [start, end] = jsxBlockParent.range;
-      const imp = `import { instantiate, registerSystem } from '@safe-engine/${sourceFramework}'\n`
-      output = imp + spliceSlice(code, start, end - start, output) + `\nregisterSystem(${currentClassName})`
-      // console.log('Program', currentClassName, output)
       const result = ts.transpileModule(output, {
         compilerOptions: {
           jsx: ts.JsxEmit.Preserve,
