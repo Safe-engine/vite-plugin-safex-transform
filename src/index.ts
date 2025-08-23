@@ -1,7 +1,7 @@
-import { parse as ESParser } from '@typescript-eslint/typescript-estree';
-import ESTraverse from "estraverse";
-import * as ts from "typescript";
-import type { Plugin } from "vite";
+import { parse as ESParser } from '@typescript-eslint/typescript-estree'
+import ESTraverse from 'estraverse'
+import * as ts from 'typescript'
+import type { Plugin } from 'vite'
 
 function parse(content) {
   return ESParser(content, {
@@ -9,18 +9,18 @@ function parse(content) {
     jsx: true,
     loc: false,
     range: true,
-  });
+  })
 }
 
 function spliceSlice(str = '', index = 0, count = 0, add = '') {
   // We cannot pass negative indexes directly to the 2nd slicing operation.
   if (index < 0) {
-    index = str.length + index;
+    index = str.length + index
     if (index < 0) {
-      index = 0;
+      index = 0
     }
   }
-  return str.slice(0, index) + (add || '') + str.slice(index + count);
+  return str.slice(0, index) + (add || '') + str.slice(index + count)
 }
 
 function camelCase(str) {
@@ -176,20 +176,22 @@ function attributesToParams(attributes, listMethods: string[] = []) {
 
 export function safexTransform(): Plugin {
   return {
-    name: "vite-plugin-safex-transform",
-    enforce: "pre",
+    name: 'vite-plugin-safex-transform',
+    enforce: 'pre',
     async transform(code, id) {
-      if (!id.endsWith(".tsx")) return;
+      if (!id.endsWith('.tsx') && !id.endsWith('.ts') && !id.endsWith('.jsx') && !id.endsWith('.js')) return
+      if (id.includes('packages/') || id.includes('node_modules/')) return
       // console.log('transform', id)
-      const parsed: any = parse(code);
-      let output = '';
-      let sourceFramework = '';
-      let jsxBlock;
-      let jsxBlockParent;
-      let currentClassName;
-      let hasStart;
-      let hasLoad;
-      let listMethods: any[] = []
+      const parsed: any = parse(code)
+      let output = ''
+      let sourceFramework = ''
+      let jsxBlock
+      let jsxBlockParent
+      let currentClassName
+      let hasStart
+      let hasLoad
+      let isComponentX
+      const listMethods: any[] = []
       ESTraverse.traverse(parsed, {
         enter(node: any, parent) {
           if (node.type === 'ImportDeclaration') {
@@ -202,7 +204,9 @@ export function safexTransform(): Plugin {
               sourceFramework = 'cocos'
             }
           } else if ('ClassDeclaration' === node.type) {
-            currentClassName = node.id.name
+            const { superClass, id } = node
+            currentClassName = id.name
+            isComponentX = superClass && superClass.name && superClass.name.includes('ComponentX')
           } else if ('MethodDefinition' === node.type) {
             if ('start' === node.key.name) {
               hasStart = true
@@ -212,13 +216,13 @@ export function safexTransform(): Plugin {
             listMethods.push(node.key.name)
           } else if ('JSXElement' === node.type) {
             if (!jsxBlock) {
-              jsxBlock = node;
+              jsxBlock = node
               jsxBlockParent = parent
             }
           }
         },
-        fallback: 'iteration'
-      });
+        fallback: 'iteration',
+      })
       if (jsxBlock) {
         const { openingElement, children } = jsxBlock
         const { attributes, name: rootTag } = openingElement
@@ -322,28 +326,30 @@ export function safexTransform(): Plugin {
           ret += `\n${classVar}.start();`
         }
         output += `${begin}${ret}\n    return ${classVar}`
-        const [start, end] = jsxBlockParent.range;
+        const [start, end] = jsxBlockParent.range
         const imp = `import { instantiate, registerSystem } from '@safe-engine/${sourceFramework}'\n`
-        output = imp + spliceSlice(code, start, end - start, output) + `\nregisterSystem(${currentClassName})`
+        output = `${imp + spliceSlice(code, start, end - start, output)}\nregisterSystem(${currentClassName})`
         // console.log('Program', currentClassName, output)
-      } else {
+      } else if (isComponentX && sourceFramework) {
         const imp = `import { registerSystem } from '@safe-engine/${sourceFramework}'\n`
-        output = imp + code + `\nregisterSystem(${currentClassName})`
+        output = `${imp + code}\nregisterSystem(${currentClassName})`
+      } else {
+        return
       }
       const result = ts.transpileModule(output, {
         compilerOptions: {
           jsx: ts.JsxEmit.Preserve,
           target: ts.ScriptTarget.ESNext,
           module: ts.ModuleKind.ESNext,
-          sourceMap: true
+          sourceMap: true,
         },
         fileName: id,
-      });
+      })
       // console.log('result', result.outputText)
       return {
         code: result.outputText,
         map: result.sourceMapText ? JSON.parse(result.sourceMapText) : null,
-      };
+      }
     },
-  };
+  }
 }
