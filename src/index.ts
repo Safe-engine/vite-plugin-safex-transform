@@ -359,7 +359,7 @@ export function safexTransform(): PluginOption {
         },
         fileName: id,
       })
-      console.log('result', result.outputText)
+      // console.log('result', result.outputText)
       return {
         code: result.outputText,
         map: result.sourceMapText ? JSON.parse(result.sourceMapText) : null,
