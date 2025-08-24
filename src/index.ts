@@ -1,7 +1,7 @@
 import { parse as ESParser } from '@typescript-eslint/typescript-estree'
 import ESTraverse from 'estraverse'
 import * as ts from 'typescript'
-import type { Plugin } from 'vite'
+import type { PluginOption } from 'vite'
 
 function parse(content) {
   return ESParser(content, {
@@ -124,6 +124,7 @@ function parseExpression(expression) {
     case 'TemplateLiteral': {
       const { quasis, expressions } = expression
       // console.log('parseExpression ', quasis, expressions)
+      // eslint-disable-next-line quotes
       const ret = ["''"]
       quasis.forEach((q, i) => {
         if (q.value.raw) ret.push(`"${q.value.raw}"`)
@@ -174,7 +175,7 @@ function attributesToParams(attributes, listMethods: string[] = []) {
   return `{${props}}`
 }
 
-export function safexTransform(): Plugin {
+export function safexTransform(): PluginOption {
   return {
     name: 'vite-plugin-safex-transform',
     enforce: 'pre',
@@ -190,7 +191,7 @@ export function safexTransform(): Plugin {
       let currentClassName
       let hasStart
       let hasLoad
-      let isComponentX
+      const listComponentX: any[] = []
       const listMethods: any[] = []
       ESTraverse.traverse(parsed, {
         enter(node: any, parent) {
@@ -206,7 +207,10 @@ export function safexTransform(): Plugin {
           } else if ('ClassDeclaration' === node.type) {
             const { superClass, id } = node
             currentClassName = id.name
-            isComponentX = superClass && superClass.name && superClass.name.includes('ComponentX')
+            const isComponentX = superClass && superClass.name && superClass.name.includes('ComponentX')
+            if (isComponentX) {
+              listComponentX.push(currentClassName)
+            }
           } else if ('MethodDefinition' === node.type) {
             if ('start' === node.key.name) {
               hasStart = true
@@ -327,12 +331,22 @@ export function safexTransform(): Plugin {
         }
         output += `${begin}${ret}\n    return ${classVar}`
         const [start, end] = jsxBlockParent.range
-        const imp = `import { instantiate, registerSystem } from '@safe-engine/${sourceFramework}'\n`
-        output = `${imp + spliceSlice(code, start, end - start, output)}\nregisterSystem(${currentClassName})`
+        const imp = `import { instantiate } from '@safe-engine/${sourceFramework}'\n`
+        output = `${imp + spliceSlice(code, start, end - start, output)}`
         // console.log('Program', currentClassName, output)
-      } else if (isComponentX && sourceFramework) {
+      } else {
+        output = code
+      }
+      if (listComponentX.length && sourceFramework) {
         const imp = `import { registerSystem } from '@safe-engine/${sourceFramework}'\n`
-        output = `${imp + code}\nregisterSystem(${currentClassName})`
+        output =
+          imp +
+          output +
+          listComponentX
+            .map((name) => {
+              return `\nregisterSystem(${name})`
+            })
+            .join('')
       } else {
         return
       }
@@ -345,7 +359,7 @@ export function safexTransform(): Plugin {
         },
         fileName: id,
       })
-      // console.log('result', result.outputText)
+      console.log('result', result.outputText)
       return {
         code: result.outputText,
         map: result.sourceMapText ? JSON.parse(result.sourceMapText) : null,
