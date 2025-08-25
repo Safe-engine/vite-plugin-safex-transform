@@ -189,8 +189,6 @@ export function safexTransform(): PluginOption {
       let jsxBlock
       let jsxBlockParent
       let currentClassName
-      let hasStart
-      let hasLoad
       const listComponentX: any[] = []
       const listMethods: any[] = []
       ESTraverse.traverse(parsed, {
@@ -212,11 +210,6 @@ export function safexTransform(): PluginOption {
               listComponentX.push(currentClassName)
             }
           } else if ('MethodDefinition' === node.type) {
-            if ('start' === node.key.name) {
-              hasStart = true
-            } else if ('onLoad' === node.key.name) {
-              hasLoad = true
-            }
             listMethods.push(node.key.name)
           } else if ('JSXElement' === node.type) {
             if (!jsxBlock) {
@@ -249,7 +242,7 @@ export function safexTransform(): PluginOption {
           if (!parentVar) {
             begin += createComponentString
             begin += `\n   const ${classVar} = ${compVar}.addComponent(this)`
-            if (hasLoad) {
+            if (listMethods.includes('onLoad')) {
               ret += `\n${classVar}.onLoad();`
             }
           } else {
@@ -326,7 +319,7 @@ export function safexTransform(): PluginOption {
           }
         }
         parseJSX(rootTag, children, attributes)
-        if (hasStart) {
+        if (listMethods.includes('start')) {
           ret += `\n${classVar}.start();`
         }
         output += `${begin}${ret}\n    return ${classVar}`
