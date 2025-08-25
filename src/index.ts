@@ -180,14 +180,13 @@ export function safexTransform(): PluginOption {
     name: 'vite-plugin-safex-transform',
     enforce: 'pre',
     async transform(code, id) {
-      if (!id.endsWith('.tsx') && !id.endsWith('.ts') && !id.endsWith('.jsx') && !id.endsWith('.js')) return
       if (id.includes('packages/') || id.includes('node_modules/')) return
+      if (!id.endsWith('.tsx') && !id.endsWith('.ts') && !id.endsWith('.jsx') && !id.endsWith('.js')) return
       // console.log('transform', id)
       const parsed: any = parse(code)
       let output = ''
       let sourceFramework = ''
       let jsxBlock
-      let jsxBlockParent
       let currentClassName
       const listComponentX: any[] = []
       const listMethods: any[] = []
@@ -214,7 +213,7 @@ export function safexTransform(): PluginOption {
           } else if ('JSXElement' === node.type) {
             if (!jsxBlock) {
               jsxBlock = node
-              jsxBlockParent = parent
+              jsxBlock.parentRange = parent!.range
             }
           }
         },
@@ -323,7 +322,7 @@ export function safexTransform(): PluginOption {
           ret += `\n${classVar}.start();`
         }
         output += `${begin}${ret}\n    return ${classVar}`
-        const [start, end] = jsxBlockParent.range
+        const [start, end] = jsxBlock.parentRange
         const imp = `import { instantiate } from '@safe-engine/${sourceFramework}'\n`
         output = `${imp + spliceSlice(code, start, end - start, output)}`
         // console.log('Program', currentClassName, output)
