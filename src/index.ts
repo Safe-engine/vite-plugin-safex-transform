@@ -163,7 +163,7 @@ function attributesToParams(attributes, listMethods: string[] = []) {
       const list = val.split('.')
       if (list.length === 2 && listMethods.includes(list[1])) {
         props += `${attName}: ${val}.bind(this),`
-      } else if (list.length > 2 && list[1] !== 'props') {
+      } else if (list.length > 2 && list[1] !== 'props' && list[2] !== 'node') {
         props += `${attName}: ${val}.bind(this.${list[1]}),`
       } else {
         props += `${attName}: ${val},`
