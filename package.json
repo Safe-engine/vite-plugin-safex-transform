@@ -3,7 +3,7 @@
   "description": "vite-plugin for safex engine",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json"

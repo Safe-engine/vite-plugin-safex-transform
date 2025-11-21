@@ -204,7 +204,7 @@ export function safexTransform(): PluginOption {
           } else if ('ClassDeclaration' === node.type) {
             const { superClass, id } = node
             currentClassName = id.name
-            const isComponentX = superClass && superClass.name && superClass.name.includes('ComponentX')
+            const isComponentX = superClass && superClass.name && ['ComponentX', 'SceneComponent'].includes(superClass.name)
             if (isComponentX) {
               listComponentX.push(currentClassName)
             }
