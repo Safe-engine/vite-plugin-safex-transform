@@ -201,6 +201,9 @@ export function safexTransform(): PluginOption {
             if (source.value === '@safe-engine/cocos') {
               sourceFramework = 'cocos'
             }
+            if (source.value === '@safe-engine/webgl') {
+              sourceFramework = 'webgl'
+            }
           } else if ('ClassDeclaration' === node.type) {
             const { superClass, id } = node
             currentClassName = id.name
