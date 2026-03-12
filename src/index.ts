@@ -194,16 +194,7 @@ export function safexTransform(): PluginOption {
         enter(node: any, parent) {
           if (node.type === 'ImportDeclaration') {
             if (sourceFramework) return
-            const { source } = node
-            if (source.value === '@safe-engine/pixi') {
-              sourceFramework = 'pixi'
-            }
-            if (source.value === '@safe-engine/cocos') {
-              sourceFramework = 'cocos'
-            }
-            if (source.value === '@safe-engine/webgl') {
-              sourceFramework = 'webgl'
-            }
+            sourceFramework = node.source.value.match(/^@safe-engine\/(\w+)/)?.[1]
           } else if ('ClassDeclaration' === node.type) {
             const { superClass, id } = node
             currentClassName = id.name
