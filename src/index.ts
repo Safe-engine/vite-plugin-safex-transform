@@ -284,8 +284,8 @@ export function safexTransform(): PluginOption {
             // console.log('CallExpression', callee, callback)
             const { object } = callee
             if (object.callee && object.callee.name === 'Array') {
-              const { name, left, right } = callback.params[1] || callback.params[0]
-              const indexVar = name || left.name
+              const { name, left, right } = callback.params[1] || callback.params[0] || {}
+              const indexVar = name || left?.name || 'i'
               const startIndex = right ? right.value : 0
               const loopCount = object.arguments[0].value + startIndex
               ret += `\n for(let ${indexVar} = ${startIndex}; ${indexVar} < ${loopCount}; ${indexVar}++) {`
@@ -294,8 +294,8 @@ export function safexTransform(): PluginOption {
               ret += '\n }'
             } else {
               // console.log('loopVar', type, object, callback.params[1])
-              const { name, left, right } = callback.params[1]
-              const indexVar = name || left.name
+              const { name, left, right } = callback.params[1] || {}
+              const indexVar = name || left?.name || 'i'
               const loopVar = parseValue(object)
               const itemVar = callback.params[0].name
               const startIndex = right ? right.value : 0
