@@ -1,7 +1,7 @@
-import { parse as ESParser } from '@typescript-eslint/typescript-estree'
-import ESTraverse from 'estraverse'
-import * as ts from 'typescript'
-import type { PluginOption } from 'vite'
+import { parse as ESParser } from '@typescript-eslint/typescript-estree';
+import ESTraverse from 'estraverse';
+import MagicString from 'magic-string';
+import type { PluginOption } from 'vite';
 
 function parse(content) {
   return ESParser(content, {
@@ -184,7 +184,7 @@ export function safexTransform(): PluginOption {
       if (!id.endsWith('.tsx') && !id.endsWith('.ts') && !id.endsWith('.jsx') && !id.endsWith('.js')) return
       // console.log('transform', id)
       const parsed: any = parse(code)
-      let output = ''
+      const ms = new MagicString(code);
       let sourceFramework = ''
       let jsxBlock
       let currentClassName
@@ -315,40 +315,33 @@ export function safexTransform(): PluginOption {
         if (listMethods.includes('start')) {
           ret += `\n${classVar}.start();`
         }
-        output += `${begin}${ret}\n    return ${classVar}`
+        const output = `${begin}${ret}\n    return ${classVar}`
         const [start, end] = jsxBlock.parentRange
         const imp = `import { instantiate } from '@safe-engine/${sourceFramework}'\n`
-        output = `${imp + spliceSlice(code, start, end - start, output)}`
+        ms.prepend(imp)
+        ms.overwrite(start, end, output)
         // console.log('Program', currentClassName, output)
-      } else {
-        output = code
       }
       if (listComponentX.length && sourceFramework) {
         const imp = `import { registerSystem } from '@safe-engine/${sourceFramework}'\n`
-        output =
-          imp +
-          output +
-          listComponentX
-            .map((name) => {
-              return `\nregisterSystem(${name})`
-            })
-            .join('')
+        const registerCode = listComponentX
+          .map((name) => {
+            return `\nregisterSystem(${name})`
+          })
+          .join('')
+        ms.prepend(imp)
+        ms.append(registerCode)
       } else {
         return
       }
-      const result = ts.transpileModule(output, {
-        compilerOptions: {
-          jsx: ts.JsxEmit.Preserve,
-          target: ts.ScriptTarget.ESNext,
-          module: ts.ModuleKind.ESNext,
-          sourceMap: true,
-        },
-        fileName: id,
-      })
-      // console.log('result', result.outputText)
       return {
-        code: result.outputText,
-        map: result.sourceMapText ? JSON.parse(result.sourceMapText) : null,
+        code: ms.toString(),
+        map: ms.generateMap({
+          hires: true,
+          file: id,
+          source: id,
+          includeContent: true,
+        }),
       }
     },
   }
