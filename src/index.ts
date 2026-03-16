@@ -12,17 +12,6 @@ function parse(content) {
   })
 }
 
-function spliceSlice(str = '', index = 0, count = 0, add = '') {
-  // We cannot pass negative indexes directly to the 2nd slicing operation.
-  if (index < 0) {
-    index = str.length + index
-    if (index < 0) {
-      index = 0
-    }
-  }
-  return str.slice(0, index) + (add || '') + str.slice(index + count)
-}
-
 function camelCase(str) {
   return str
     .replace(/(?:^\w|[A-Z]|\b\w)/g, function (word, index) {
@@ -191,7 +180,7 @@ export function safexTransform(): PluginOption {
       const listComponentX: any[] = []
       const listMethods: any[] = []
       ESTraverse.traverse(parsed, {
-        enter(node: any, parent) {
+        enter(node: any, parent?: any) {
           if (node.type === 'ImportDeclaration') {
             if (sourceFramework) return
             sourceFramework = node.source.value.match(/^@safe-engine\/(\w+)/)?.[1]
@@ -209,17 +198,21 @@ export function safexTransform(): PluginOption {
               jsxBlock = node
               jsxBlock.parentRange = parent!.range
             }
+            if (node.closingElement) {
+              const [rs, re] = node.closingElement.range
+              ms.remove(rs, re)
+            }
           }
         },
         fallback: 'iteration',
       })
       if (jsxBlock) {
         const { openingElement, children } = jsxBlock
-        const { attributes, name: rootTag } = openingElement
-        let ret = ''
-        let begin = ''
+        const { attributes, name: rootTag, range } = openingElement
         const classVar = getComponentName(currentClassName)
-        function parseJSX(tagName, children, attributes: any[] = [], parentVar?) {
+        function parseJSX(range, tagName, children, attributes: any[] = [], parentVar?) {
+          let ret = ''
+          const [start, end] = range
           const componentName = tagName.name
           // console.log('parseJSX', componentName)
           if (componentName === 'ExtraDataComp') {
@@ -227,14 +220,15 @@ export function safexTransform(): PluginOption {
             const key = attributes.find(({ name }) => name.name === 'key').value.value
             const value = attributes.find(({ name }) => name.name === 'value')
             ret += `\n     ${parentVar}.node.setData('${key}', ${parseValue(value.value)})`
+            ms.overwrite(start, end, ret)
             return
           }
           const compVar = getComponentName(componentName)
           const params = attributesToParams(attributes, listMethods)
           const createComponentString = `\n    const ${compVar} = instantiate(${componentName}, ${params})`
           if (!parentVar) {
-            begin += createComponentString
-            begin += `\n   const ${classVar} = ${compVar}.addComponent(this)`
+            ms.appendLeft(start, createComponentString)
+            ms.appendLeft(start, `\n   const ${classVar} = ${compVar}.addComponent(this)`)
             if (listMethods.includes('onLoad')) {
               ret += `\n${classVar}.onLoad();`
             }
@@ -260,6 +254,7 @@ export function safexTransform(): PluginOption {
               ret += parseNodeAttribute(value, compVar, attName)
             }
           })
+          ms.overwrite(start, end, ret)
           children.forEach(parseChildren(compVar))
         }
         function parseChildren(compVar) {
@@ -273,8 +268,8 @@ export function safexTransform(): PluginOption {
               }
               return
             }
-            const { attributes, name } = openingElement
-            parseJSX(name, children, attributes, compVar)
+            const { attributes, name, range } = openingElement
+            parseJSX(range, name, children, attributes, compVar)
           }
         }
         function parseJSXExpressionContainer(expression, compVar) {
@@ -283,43 +278,45 @@ export function safexTransform(): PluginOption {
             const callback = args[0]
             // console.log('CallExpression', callee, callback)
             const { object } = callee
+            const start = callee.range[0]
             if (object.callee && object.callee.name === 'Array') {
               const { name, left, right } = callback.params[1] || callback.params[0] || {}
               const indexVar = name || left?.name || 'i'
               const startIndex = right ? right.value : 0
               const loopCount = object.arguments[0].value + startIndex
-              ret += `\n for(let ${indexVar} = ${startIndex}; ${indexVar} < ${loopCount}; ${indexVar}++) {`
+              const end = callback.body.range[0]
+              ms.overwrite(start, end, `\n for(let ${indexVar} = ${startIndex}; ${indexVar} < ${loopCount}; ${indexVar}++) {`)
               // console.log('callee', loopCount, callback.body)
               parseChildren(compVar)(callback.body)
-              ret += '\n }'
+              ms.replaceAll('))', '}')
             } else {
-              // console.log('loopVar', type, object, callback.params[1])
+              // console.log('loopVar', type, callback)
               const { name, left, right } = callback.params[1] || {}
               const indexVar = name || left?.name || 'i'
               const loopVar = parseValue(object)
               const itemVar = callback.params[0].name
               const startIndex = right ? right.value : 0
+              const end = callback.body.range[0]
               if (startIndex) {
-                ret += `\n for(let ${indexVar} = ${startIndex}; ${indexVar} < ${loopVar}.length + ${startIndex}; ${indexVar}++) {`
-                ret += `\n const ${itemVar} = ${loopVar}[${indexVar} - ${startIndex}]`
+                ms.overwrite(start, end, `\n for(let ${indexVar} = ${startIndex}; ${indexVar} < ${loopVar}.length + ${startIndex}; ${indexVar}++) {` +
+                  `\n const ${itemVar} = ${loopVar}[${indexVar} - ${startIndex}]`)
               } else {
-                ret += `\n for(let ${indexVar} = 0; ${indexVar} < ${loopVar}.length; ${indexVar}++) {`
-                ret += `\n const ${itemVar} = ${loopVar}[${indexVar}]`
+                ms.overwrite(start, end, `\n for(let ${indexVar} = 0; ${indexVar} < ${loopVar}.length; ${indexVar}++) {` +
+                  `\n const ${itemVar} = ${loopVar}[${indexVar}]`)
               }
               parseChildren(compVar)(callback.body)
-              ret += '\n }'
+              ms.replaceAll('))', '}')
             }
           }
         }
-        parseJSX(rootTag, children, attributes)
+        parseJSX(range, rootTag, children, attributes)
+        const end = jsxBlock.parentRange[1]
         if (listMethods.includes('start')) {
-          ret += `\n${classVar}.start();`
+          ms.appendRight(end, `\n${classVar}.start();`)
         }
-        const output = `${begin}${ret}\n    return ${classVar}`
-        const [start, end] = jsxBlock.parentRange
         const imp = `import { instantiate } from '@safe-engine/${sourceFramework}'\n`
         ms.prepend(imp)
-        ms.overwrite(start, end, output)
+        ms.appendRight(end, `\n    return ${classVar}`)
         // console.log('Program', currentClassName, output)
       }
       if (listComponentX.length && sourceFramework) {
