@@ -314,19 +314,19 @@ export function safexTransform(): PluginOption {
         if (listMethods.includes('start')) {
           ms.appendRight(end, `\n${classVar}.start();`)
         }
-        const imp = `import { instantiate } from '@safe-engine/${sourceFramework}'\n`
-        ms.prepend(imp)
+        if (!code.includes('instantiate'))
+          ms.prepend(`import { instantiate } from '@safe-engine/${sourceFramework}'\n`);
         ms.appendRight(end, `\n    return ${classVar}`)
         // console.log('Program', currentClassName, output)
       }
       if (listComponentX.length && sourceFramework) {
-        const imp = `import { registerSystem } from '@safe-engine/${sourceFramework}'\n`
+        if (!code.includes('registerSystem'))
+          ms.prepend(`import { registerSystem } from '@safe-engine/${sourceFramework}'\n`);
         const registerCode = listComponentX
           .map((name) => {
             return `\nregisterSystem(${name})`
           })
           .join('')
-        ms.prepend(imp)
         ms.append(registerCode)
       } else {
         return
