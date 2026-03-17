@@ -288,7 +288,7 @@ export function safexTransform(): PluginOption {
               ms.overwrite(start, end, `\n for(let ${indexVar} = ${startIndex}; ${indexVar} < ${loopCount}; ${indexVar}++) {`)
               // console.log('callee', loopCount, callback.body)
               parseChildren(compVar)(callback.body)
-              ms.replaceAll('))', '}')
+              ms.replaceAll('))}', '}}')
             } else {
               // console.log('loopVar', type, callback)
               const { name, left, right } = callback.params[1] || {}
@@ -305,7 +305,7 @@ export function safexTransform(): PluginOption {
                   `\n const ${itemVar} = ${loopVar}[${indexVar}]`)
               }
               parseChildren(compVar)(callback.body)
-              ms.replaceAll('))', '}')
+              ms.replaceAll('))}', '}}')
             }
           }
         }
