@@ -1,7 +1,7 @@
-import { parse as ESParser } from '@typescript-eslint/typescript-estree';
-import ESTraverse from 'estraverse';
-import MagicString from 'magic-string';
-import type { PluginOption } from 'vite';
+import { parse as ESParser } from '@typescript-eslint/typescript-estree'
+import ESTraverse from 'estraverse'
+import MagicString from 'magic-string'
+import type { PluginOption } from 'vite'
 
 function parse(content) {
   return ESParser(content, {
@@ -113,8 +113,7 @@ function parseExpression(expression) {
     case 'TemplateLiteral': {
       const { quasis, expressions } = expression
       // console.log('parseExpression ', quasis, expressions)
-      // eslint-disable-next-line quotes
-      const ret = ["''"]
+      const ret = ['\'\'']
       quasis.forEach((q, i) => {
         if (q.value.raw) ret.push(`"${q.value.raw}"`)
         if (!q.tail) {
@@ -173,7 +172,7 @@ export function safexTransform(): PluginOption {
       if (!id.endsWith('.tsx') && !id.endsWith('.ts') && !id.endsWith('.jsx') && !id.endsWith('.js')) return
       // console.log('transform', id)
       const parsed: any = parse(code)
-      const ms = new MagicString(code);
+      const ms = new MagicString(code)
       let sourceFramework = ''
       let jsxBlock
       let currentClassName
@@ -187,7 +186,7 @@ export function safexTransform(): PluginOption {
           } else if ('ClassDeclaration' === node.type) {
             const { superClass, id } = node
             currentClassName = id.name
-            const isComponentX = superClass && superClass.name && ['ComponentX', 'SceneComponent'].includes(superClass.name)
+            const isComponentX = superClass && superClass.name && ['ComponentX', 'SceneComponent', 'Scene'].includes(superClass.name)
             if (isComponentX) {
               listComponentX.push(currentClassName)
             }
@@ -298,11 +297,11 @@ export function safexTransform(): PluginOption {
               const startIndex = right ? right.value : 0
               const end = callback.body.range[0]
               if (startIndex) {
-                ms.overwrite(start, end, `\n for(let ${indexVar} = ${startIndex}; ${indexVar} < ${loopVar}.length + ${startIndex}; ${indexVar}++) {` +
-                  `\n const ${itemVar} = ${loopVar}[${indexVar} - ${startIndex}]`)
+                ms.overwrite(start, end, `\n for(let ${indexVar} = ${startIndex}; ${indexVar} < ${loopVar}.length + ${startIndex}; ${indexVar}++) {`
+                + `\n const ${itemVar} = ${loopVar}[${indexVar} - ${startIndex}]`)
               } else {
-                ms.overwrite(start, end, `\n for(let ${indexVar} = 0; ${indexVar} < ${loopVar}.length; ${indexVar}++) {` +
-                  `\n const ${itemVar} = ${loopVar}[${indexVar}]`)
+                ms.overwrite(start, end, `\n for(let ${indexVar} = 0; ${indexVar} < ${loopVar}.length; ${indexVar}++) {`
+                + `\n const ${itemVar} = ${loopVar}[${indexVar}]`)
               }
               parseChildren(compVar)(callback.body)
               ms.replaceAll('))}', '}}')
@@ -315,13 +314,13 @@ export function safexTransform(): PluginOption {
           ms.appendRight(end, `\n${classVar}.start();`)
         }
         if (!/import {([\s\S]*?)instantiate([\s\S]*?)} from ["']@safe-engine/.test(code))
-          ms.prepend(`import { instantiate } from '@safe-engine/${sourceFramework}'\n`);
+          ms.prepend(`import { instantiate } from '@safe-engine/${sourceFramework}'\n`)
         ms.appendRight(end, `\n    return ${classVar}`)
         // console.log('Program', currentClassName, output)
       }
-      if (listComponentX.length && sourceFramework) {
+      if (listComponentX.length && sourceFramework && sourceFramework !== 'sdl') {
         if (!/import {([\s\S]*?)registerSystem([\s\S]*?)} from ["']@safe-engine/.test(code))
-          ms.prepend(`import { registerSystem } from '@safe-engine/${sourceFramework}'\n`);
+          ms.prepend(`import { registerSystem } from '@safe-engine/${sourceFramework}'\n`)
         const registerCode = listComponentX
           .map((name) => {
             return `\nregisterSystem(${name})`
