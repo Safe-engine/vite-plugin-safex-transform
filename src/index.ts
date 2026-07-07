@@ -133,6 +133,9 @@ function parseNodeAttribute(value, componentVar, prop) {
     const { properties } = value.expression
     return properties
       .map((p) => {
+        if (p.key.name === 'xy' && p.value.type === 'ArrayExpression') {
+          return `\n    ${componentVar}.${prop}.setPosition(${p.value.elements.map(parseValue).join(', ')})`
+        }
         return `\n    ${componentVar}.${prop}.${p.key.name} = ${parseExpression(p.value)}`
       })
       .join('')
