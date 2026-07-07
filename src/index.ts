@@ -229,8 +229,12 @@ export function safexTransform(): PluginOption {
           const params = attributesToParams(attributes, listMethods)
           const createComponentString = `\n    const ${compVar} = instantiate(${componentName}, ${params})`
           if (!parentVar) {
-            ms.appendLeft(start, createComponentString)
-            ms.appendLeft(start, `\n   const ${classVar} = ${compVar}.addComponent(this)`)
+            if ('Scene' === componentName) {
+              ms.appendLeft(start, `\n   const ${compVar} = this`)
+            } else {
+              ms.appendLeft(start, createComponentString)
+              ms.appendLeft(start, `\n   const ${classVar} = ${compVar}.addComponent(this)`)
+            }
             if (listMethods.includes('onLoad')) {
               ret += `\n${classVar}.onLoad();`
             }
@@ -318,10 +322,12 @@ export function safexTransform(): PluginOption {
         }
         if (!/import {([\s\S]*?)instantiate([\s\S]*?)} from ["']@safe-engine/.test(code))
           ms.prepend(`import { instantiate } from '@safe-engine/${sourceFramework}'\n`)
-        ms.appendRight(end, `\n    return ${classVar}`)
+        if ('Scene' !== rootTag.name) {
+          ms.appendRight(end, `\n    return ${classVar}`)
+        }
         // console.log('Program', currentClassName, output)
       }
-      if (listComponentX.length && sourceFramework && sourceFramework !== 'sdl') {
+      if (sourceFramework && sourceFramework !== 'sdl') {
         if (!/import {([\s\S]*?)registerSystem([\s\S]*?)} from ["']@safe-engine/.test(code))
           ms.prepend(`import { registerSystem } from '@safe-engine/${sourceFramework}'\n`)
         const registerCode = listComponentX
@@ -331,7 +337,7 @@ export function safexTransform(): PluginOption {
           .join('')
         ms.append(registerCode)
       } else {
-        return
+        if (!listComponentX.length) return
       }
       return {
         code: ms.toString(),
