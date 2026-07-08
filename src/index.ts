@@ -322,7 +322,7 @@ export function safexTransform(): PluginOption {
         }
         if (!/import {([\s\S]*?)instantiate([\s\S]*?)} from ["']@safe-engine/.test(code))
           ms.prepend(`import { instantiate } from '@safe-engine/${sourceFramework}'\n`)
-        if ('Scene' !== rootTag.name) {
+        if ('Scene' !== rootTag.name && 'SceneComponent' !== rootTag.name) {
           ms.appendRight(end, `\n    return ${classVar}`)
         }
         // console.log('Program', currentClassName, output)
