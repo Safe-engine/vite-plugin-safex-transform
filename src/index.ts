@@ -235,7 +235,7 @@ export function safexTransform(): PluginOption {
               ms.appendLeft(start, createComponentString)
               ms.appendLeft(start, `\n   const ${classVar} = ${compVar}.addComponent(this)`)
             }
-            if (listMethods.includes('onLoad')) {
+            if (listMethods.includes('onLoad') && sourceFramework !== 'sdl') {
               ret += `\n${classVar}.onLoad();`
             }
           } else {
