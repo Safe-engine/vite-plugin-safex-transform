@@ -336,9 +336,8 @@ export function safexTransform(): PluginOption {
           })
           .join('')
         ms.append(registerCode)
-      } else {
-        if (!listComponentX.length) return
       }
+      if (!jsxBlock) return
       return {
         code: ms.toString(),
         map: ms.generateMap({
