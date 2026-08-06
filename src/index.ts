@@ -40,6 +40,9 @@ function parseValue(value) {
     case 'CallExpression': {
       return parseExpression(value)
     }
+    case 'LogicalExpression': {
+      return parseExpression(value)
+    }
     case 'StringLiteral': {
       return value.extra.raw
     }
@@ -108,6 +111,10 @@ function parseExpression(expression) {
       if ('BinaryExpression' === right.type && (right.operator === '+' || right.operator === '-')) {
         return `${parseValue(left)} ${operator} (${parseValue(right)})`
       }
+      return `${parseValue(left)} ${operator} ${parseValue(right)}`
+    }
+    case 'LogicalExpression': {
+      const { operator, right, left } = expression
       return `${parseValue(left)} ${operator} ${parseValue(right)}`
     }
     case 'TemplateLiteral': {
