@@ -207,7 +207,7 @@ export function safexTransform(): PluginOption {
               jsxBlock = node
               jsxBlock.parentRange = parent!.range
             }
-            if (node.closingElement) {
+            if (node !== jsxBlock && node.closingElement) {
               const [rs, re] = node.closingElement.range
               ms.remove(rs, re)
             }
@@ -237,10 +237,10 @@ export function safexTransform(): PluginOption {
           const createComponentString = `\n    const ${compVar} = instantiate(${componentName}, ${params})`
           if (!parentVar) {
             if ('Scene' === componentName) {
-              ms.appendLeft(start, `\n   const ${compVar} = this`)
+              ret += `\n   const ${compVar} = this`
             } else {
-              ms.appendLeft(start, createComponentString)
-              ms.appendLeft(start, `\n   const ${classVar} = ${compVar}.addComponent(this)`)
+              ret += createComponentString
+              ret += `\n   const ${classVar} = ${compVar}.addComponent(this)`
             }
             if (listMethods.includes('onLoad') && sourceFramework !== 'sdl') {
               ret += `\n${classVar}.onLoad();`
@@ -323,6 +323,9 @@ export function safexTransform(): PluginOption {
           }
         }
         parseJSX(range, rootTag, children, attributes)
+        const rootClosingStart = jsxBlock.closingElement?.range[0] ?? jsxBlock.range[1]
+        ms.remove(jsxBlock.parentRange[0], range[0])
+        ms.remove(rootClosingStart, jsxBlock.parentRange[1])
         const end = jsxBlock.parentRange[1]
         if (listMethods.includes('start')) {
           ms.appendRight(end, `\n${classVar}.start();`)
